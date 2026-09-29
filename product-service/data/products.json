@@ -1,0 +1,23 @@
+[
+  {
+    "id": 501,
+    "name": "Engineering Physics Textbook",
+    "price": 650,
+    "stock": 25,
+    "category": "Books"
+  },
+  {
+    "id": 502,
+    "name": "Scientific Calculator FX-991CW",
+    "price": 1200,
+    "stock": 15,
+    "category": "Stationery"
+  },
+  {
+    "id": 503,
+    "name": "Campus ID Card Lanyard",
+    "price": 150,
+    "stock": 50,
+    "category": "Accessories"
+  }
+]

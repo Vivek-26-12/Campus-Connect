@@ -1,0 +1,27 @@
+{
+  "name": "express-student-api",
+  "version": "1.0.0",
+  "description": "Lab 3 - RESTful Web Services Express.js Student API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "express",
+    "rest",
+    "openapi",
+    "swagger",
+    "student-api"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
+    "express": "^4.19.2",
+    "mongoose": "^9.9.5",
+    "swagger-ui-express": "^5.0.1",
+    "yamljs": "^0.3.0"
+  }
+}

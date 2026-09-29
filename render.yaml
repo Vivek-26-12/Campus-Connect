@@ -1,0 +1,108 @@
+services:
+  # ===========================================================================
+  # CampusConnect API Gateway (Public Cloud-Facing Web Service)
+  # ===========================================================================
+  - type: web
+    name: campusconnect-api-gateway
+    env: docker
+    dockerfilePath: ./api-gateway/Dockerfile
+    dockerContext: ./api-gateway
+    plan: free
+    region: oregon
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: GATEWAY_PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production
+      - key: REQUEST_TIMEOUT_MS
+        value: 5000
+      # Cloud Service Discovery URLs (Internal or Cloud Hostnames)
+      - key: USER_SERVICE_URL
+        fromService:
+          type: web
+          name: campusconnect-user-service
+          property: host
+      - key: PRODUCT_SERVICE_URL
+        fromService:
+          type: web
+          name: campusconnect-product-service
+          property: host
+      - key: ORDER_SERVICE_URL
+        fromService:
+          type: web
+          name: campusconnect-order-service
+          property: host
+
+  # ===========================================================================
+  # User Microservice (Internal Cloud Service)
+  # ===========================================================================
+  - type: web
+    name: campusconnect-user-service
+    env: docker
+    dockerfilePath: ./user-service/Dockerfile
+    dockerContext: ./user-service
+    plan: free
+    region: oregon
+    envVars:
+      - key: USER_SERVICE_PORT
+        value: 3001
+      - key: PORT
+        value: 3001
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+
+  # ===========================================================================
+  # Product Microservice (Internal Cloud Service)
+  # ===========================================================================
+  - type: web
+    name: campusconnect-product-service
+    env: docker
+    dockerfilePath: ./product-service/Dockerfile
+    dockerContext: ./product-service
+    plan: free
+    region: oregon
+    envVars:
+      - key: PRODUCT_SERVICE_PORT
+        value: 3002
+      - key: PORT
+        value: 3002
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+
+  # ===========================================================================
+  # Order Microservice (Internal Cloud Service)
+  # ===========================================================================
+  - type: web
+    name: campusconnect-order-service
+    env: docker
+    dockerfilePath: ./order-service/Dockerfile
+    dockerContext: ./order-service
+    plan: free
+    region: oregon
+    envVars:
+      - key: ORDER_SERVICE_PORT
+        value: 3003
+      - key: PORT
+        value: 3003
+      - key: NODE_ENV
+        value: production
+      - key: REQUEST_TIMEOUT_MS
+        value: 3500
+      - key: USER_SERVICE_URL
+        fromService:
+          type: web
+          name: campusconnect-user-service
+          property: host
+      - key: PRODUCT_SERVICE_URL
+        fromService:
+          type: web
+          name: campusconnect-product-service
+          property: host
+      - key: MONGODB_URI
+        sync: false

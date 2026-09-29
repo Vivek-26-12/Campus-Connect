@@ -1,0 +1,65 @@
+[
+  {
+    "id": 1,
+    "userId": 101,
+    "user": {
+      "id": 101,
+      "name": "Aarav Patel",
+      "email": "aarav@campus.edu",
+      "department": "Computer Science"
+    },
+    "productId": 501,
+    "product": {
+      "id": 501,
+      "name": "Engineering Physics Textbook",
+      "price": 650,
+      "category": "Books"
+    },
+    "quantity": 1,
+    "totalAmount": 650,
+    "status": "CONFIRMED",
+    "createdAt": "2026-09-25T08:58:04.182Z"
+  },
+  {
+    "id": 2,
+    "userId": 101,
+    "user": {
+      "id": 101,
+      "name": "Aarav Patel",
+      "email": "aarav@campus.edu",
+      "department": "Computer Science"
+    },
+    "productId": 501,
+    "product": {
+      "id": 501,
+      "name": "Engineering Physics Textbook",
+      "price": 650,
+      "category": "Books"
+    },
+    "quantity": 2,
+    "totalAmount": 1300,
+    "status": "CONFIRMED",
+    "createdAt": "2026-09-25T09:02:32.154Z"
+  },
+  {
+    "id": 3,
+    "userId": 101,
+    "user": {
+      "id": 101,
+      "name": "Aarav Patel",
+      "email": "aarav@campus.edu",
+      "department": "Computer Science"
+    },
+    "productId": 501,
+    "product": {
+      "id": 501,
+      "name": "Engineering Physics Textbook",
+      "price": 650,
+      "category": "Books"
+    },
+    "quantity": 1,
+    "totalAmount": 650,
+    "status": "CONFIRMED",
+    "createdAt": "2026-09-25T09:03:14.633Z"
+  }
+]

@@ -1,0 +1,224 @@
+openapi: 3.0.3
+info:
+  title: Student Management REST API
+  description: |
+    RESTful Web Service for Student Resource Management built with Express.js for Lab 3 Assignment.
+    Supports CRUD operations, JSON request/response payloads, input validation, and HTTP status codes.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Express.js Local Server
+
+paths:
+  /students:
+    get:
+      summary: List all students
+      description: Retrieve a list of all enrolled students from the in-memory data store.
+      operationId: getAllStudents
+      responses:
+        '200':
+          description: A list of student objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Student'
+
+    post:
+      summary: Create a new student
+      description: Add a new student resource to the in-memory data store with request body validation.
+      operationId: createStudent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StudentInput'
+      responses:
+        '201':
+          description: Student successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Student'
+        '400':
+          description: Bad Request - Validation error in request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /students/{id}:
+    get:
+      summary: Get student by ID
+      description: Retrieve a single student record matching the specified unique ID.
+      operationId: getStudentById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique integer ID of the student
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: Student found and returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Student'
+        '400':
+          description: Invalid ID parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Student Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update a student
+      description: Update details of an existing student by ID.
+      operationId: updateStudent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique integer ID of the student
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StudentInput'
+      responses:
+        '200':
+          description: Student successfully updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Student'
+        '400':
+          description: Bad Request - Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Student Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete a student
+      description: Remove a student resource by ID from the in-memory data store.
+      operationId: deleteStudent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique integer ID of the student
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '204':
+          description: Student successfully deleted (No Content)
+        '404':
+          description: Student Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    Student:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Aarav Patel
+        email:
+          type: string
+          format: email
+          example: aarav@example.com
+        course:
+          type: string
+          example: Computer Science
+        semester:
+          type: integer
+          example: 5
+      required:
+        - id
+        - name
+        - email
+        - course
+        - semester
+
+    StudentInput:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Aarav Patel
+        email:
+          type: string
+          format: email
+          example: aarav@example.com
+        course:
+          type: string
+          example: Computer Science
+        semester:
+          type: integer
+          example: 5
+      required:
+        - name
+        - email
+        - course
+        - semester
+
+    FieldError:
+      type: object
+      properties:
+        field:
+          type: string
+          example: email
+        message:
+          type: string
+          example: Email must be a valid email address
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 400
+        error:
+          type: string
+          example: Bad Request
+        message:
+          type: string
+          example: Validation failed for request body
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-08-21T14:30:00.000Z"

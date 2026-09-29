@@ -1,0 +1,23 @@
+[
+  {
+    "id": 101,
+    "name": "Aarav Patel",
+    "email": "aarav@campus.edu",
+    "department": "Computer Science",
+    "role": "Student"
+  },
+  {
+    "id": 102,
+    "name": "Priya Sharma",
+    "email": "priya@campus.edu",
+    "department": "Information Technology",
+    "role": "Faculty"
+  },
+  {
+    "id": 103,
+    "name": "Rohan Verma",
+    "email": "rohan@campus.edu",
+    "department": "Software Engineering",
+    "role": "Student"
+  }
+]

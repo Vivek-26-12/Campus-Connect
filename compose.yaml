@@ -1,0 +1,121 @@
+version: '3.8'
+
+# =============================================================================
+# CampusConnect Microservices Orchestration (Lab 7)
+# API Gateway, Service Discovery & Cloud Deployment
+#
+# Key Architectural Principle for Lab 7:
+# ONLY api-gateway exposes port 3000 to the external host.
+# user-service, product-service, and order-service are private and reachable
+# ONLY inside the internal Docker bridge network ('campus-network').
+# =============================================================================
+
+services:
+  # -------------------------------------------------------------
+  # User Service: Private microservice for user accounts (:3001)
+  # -------------------------------------------------------------
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    image: user-service:v1
+    container_name: user-service
+    expose:
+      - "3001"
+    environment:
+      USER_SERVICE_PORT: 3001
+      MONGODB_URI: ${MONGODB_URI:-}
+      NODE_ENV: production
+    volumes:
+      - user-data:/app/data
+    networks:
+      - campus-network
+    restart: unless-stopped
+
+  # -------------------------------------------------------------
+  # Product Service: Private microservice for catalog (:3002)
+  # -------------------------------------------------------------
+  product-service:
+    build:
+      context: ./product-service
+      dockerfile: Dockerfile
+    image: product-service:v1
+    container_name: product-service
+    expose:
+      - "3002"
+    environment:
+      PRODUCT_SERVICE_PORT: 3002
+      MONGODB_URI: ${MONGODB_URI:-}
+      NODE_ENV: production
+    volumes:
+      - product-data:/app/data
+    networks:
+      - campus-network
+    restart: unless-stopped
+
+  # -------------------------------------------------------------
+  # Order Service: Private microservice for order transactions (:3003)
+  # -------------------------------------------------------------
+  order-service:
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
+    image: order-service:v1
+    container_name: order-service
+    expose:
+      - "3003"
+    environment:
+      ORDER_SERVICE_PORT: 3003
+      USER_SERVICE_URL: http://user-service:3001
+      PRODUCT_SERVICE_URL: http://product-service:3002
+      REQUEST_TIMEOUT_MS: 3500
+      MONGODB_URI: ${MONGODB_URI:-}
+      NODE_ENV: production
+    depends_on:
+      - user-service
+      - product-service
+    volumes:
+      - order-data:/app/data
+    networks:
+      - campus-network
+    restart: unless-stopped
+
+  # -------------------------------------------------------------
+  # API Gateway: Public single entry point for all traffic (:3000)
+  # -------------------------------------------------------------
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    image: api-gateway:v1
+    container_name: api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      GATEWAY_PORT: 3000
+      PORT: 3000
+      USER_SERVICE_URL: http://user-service:3001
+      PRODUCT_SERVICE_URL: http://product-service:3002
+      ORDER_SERVICE_URL: http://order-service:3003
+      REQUEST_TIMEOUT_MS: 5000
+      NODE_ENV: production
+    depends_on:
+      - user-service
+      - product-service
+      - order-service
+    networks:
+      - campus-network
+    restart: unless-stopped
+
+networks:
+  campus-network:
+    name: campus-network
+    driver: bridge
+
+volumes:
+  user-data:
+    name: user-data
+  product-data:
+    name: product-data
+  order-data:
+    name: order-data

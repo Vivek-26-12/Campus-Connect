@@ -1,0 +1,324 @@
+{
+  "info": {
+    "_postman_id": "b7c8d9e0-f1a2-3456-bcde-fa1234567890",
+    "name": "Lab 7: API Gateway, Service Discovery & Cloud Deployment",
+    "description": "Postman Test Suite for CampusConnect API Gateway (Lab 7) - Web Services & SOA Laboratory.\nSingle entry point routing to User, Product, and Order services with centralized error handling, configuration-based service discovery, and cloud deployment verification.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string",
+      "description": "Base URL of the API Gateway (Local: http://localhost:3000, Cloud: https://campusconnect-gateway.onrender.com)"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Gateway Core & Service Discovery",
+      "item": [
+        {
+          "name": "GET /health (Gateway Health Check)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Gateway health-check endpoint reporting gateway status 'UP', uptime, and active service discovery registry table."
+          }
+        },
+        {
+          "name": "GET /services (Dynamic Service Registry)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/services",
+              "host": ["{{baseUrl}}"],
+              "path": ["services"]
+            },
+            "description": "Returns the configuration-driven service registry URLs loaded at startup."
+          }
+        },
+        {
+          "name": "GET / (Gateway Status Dashboard)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": ["{{baseUrl}}"],
+              "path": [""]
+            },
+            "description": "API Gateway landing documentation with routing tables and service targets."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. User Service via Gateway (/users)",
+      "item": [
+        {
+          "name": "GET All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            },
+            "description": "Gateway routes /users to User Service. Returns 200 OK with list of users."
+          }
+        },
+        {
+          "name": "GET User by ID (101)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/101",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "101"]
+            },
+            "description": "Gateway routes /users/101 to User Service. Returns Aarav Patel."
+          }
+        },
+        {
+          "name": "POST Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Vikram Malhotra\",\n  \"email\": \"vikram@campus.edu\",\n  \"department\": \"Artificial Intelligence\",\n  \"role\": \"Student\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            },
+            "description": "Gateway proxies POST request with body to User Service. Returns 201 Created."
+          }
+        },
+        {
+          "name": "GET User Not Found (9999)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/9999",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "9999"]
+            },
+            "description": "Tests 404 Not Found propagation through the Gateway."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Product Service via Gateway (/products)",
+      "item": [
+        {
+          "name": "GET All Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["products"]
+            },
+            "description": "Gateway routes /products to Product Service. Returns 200 OK with catalog items."
+          }
+        },
+        {
+          "name": "GET Product by ID (501)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/501",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "501"]
+            },
+            "description": "Gateway routes /products/501 to Product Service. Returns Engineering Physics Textbook."
+          }
+        },
+        {
+          "name": "POST Create Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Wireless Presenter Remote\",\n  \"price\": 850,\n  \"stock\": 20,\n  \"category\": \"Electronics\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["products"]
+            },
+            "description": "Gateway proxies POST to Product Service. Returns 201 Created."
+          }
+        },
+        {
+          "name": "GET Product Not Found (9999)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/9999",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "9999"]
+            },
+            "description": "Tests 404 propagation through the Gateway for non-existent product."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Order Service via Gateway (/orders)",
+      "item": [
+        {
+          "name": "GET All Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            },
+            "description": "Gateway routes /orders to Order Service. Returns 200 OK."
+          }
+        },
+        {
+          "name": "POST Create Order (Full-Stack Flow)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 101,\n  \"productId\": 501,\n  \"quantity\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            },
+            "description": "End-to-end full stack flow: Client -> Gateway -> Order Service -> User Service & Product Service -> MongoDB Atlas."
+          }
+        },
+        {
+          "name": "POST Order Invalid User (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 9999,\n  \"productId\": 501,\n  \"quantity\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            },
+            "description": "Order Service validates user 9999 against User Service, receives 404 and forwards to Gateway."
+          }
+        },
+        {
+          "name": "POST Order Invalid Product (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 101,\n  \"productId\": 9999,\n  \"quantity\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            },
+            "description": "Order Service validates product 9999 against Product Service, receives 404 and forwards to Gateway."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Centralized Error Handling & Isolation",
+      "item": [
+        {
+          "name": "Unreachable Service 502 Bad Gateway Test",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            },
+            "description": "Execute after running 'docker stop user-service'. Confirms Gateway intercepts ECONNREFUSED and responds with HTTP 502 Bad Gateway and clean JSON diagnostic."
+          }
+        },
+        {
+          "name": "Gateway 404 Unmapped Route Test",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/unregistered",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v2", "unregistered"]
+            },
+            "description": "Tests centralized 404 response for endpoints not registered in the Gateway routing table."
+          }
+        },
+        {
+          "name": "Port Isolation Proof (Direct Call to :3001)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3001/users",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3001",
+              "path": ["users"]
+            },
+            "description": "Proves network isolation: direct access to User Service on port 3001 fails because only port 3000 is published."
+          }
+        }
+      ]
+    }
+  ]
+}
