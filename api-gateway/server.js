@@ -102,7 +102,8 @@ app.get('/health', (req, res) => {
             registeredServices: {
                 users: config.services.userService.url,
                 products: config.services.productService.url,
-                orders: config.services.orderService.url
+                orders: config.services.orderService.url,
+                data: config.services.dataService.url
             }
         }
     });
@@ -142,6 +143,11 @@ app.get('/', (req, res) => {
                 target: config.services.orderService.url,
                 service: config.services.orderService.name,
                 example: `GET /orders, GET /orders/1001, POST /orders`
+            },
+            "/data/*": {
+                target: config.services.dataService.url,
+                service: config.services.dataService.name,
+                example: `GET /data/health, GET /data/status, POST /data/seed, PATCH /data/update, GET /data/overview`
             }
         }
     });
@@ -153,6 +159,7 @@ app.get('/', (req, res) => {
 app.use('/users', (req, res) => proxyRequest(config.services.userService, req, res));
 app.use('/products', (req, res) => proxyRequest(config.services.productService, req, res));
 app.use('/orders', (req, res) => proxyRequest(config.services.orderService, req, res));
+app.use('/data', (req, res) => proxyRequest(config.services.dataService, req, res));
 
 // 404 Fallback for Unmapped Gateway Endpoints
 app.use((req, res) => {

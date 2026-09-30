@@ -33,6 +33,12 @@ const registry = {
         name: 'Order Service',
         pathPrefix: '/orders',
         url: (process.env.ORDER_SERVICE_URL || fileConfig.ORDER_SERVICE_URL || 'http://127.0.0.1:3003').replace(/\/$/, '')
+    },
+    dataService: {
+        id: 'data-service',
+        name: 'Data & Persistence Service (5th Microservice)',
+        pathPrefix: '/data',
+        url: (process.env.DATA_SERVICE_URL || fileConfig.DATA_SERVICE_URL || 'http://127.0.0.1:3004').replace(/\/$/, '')
     }
 };
 

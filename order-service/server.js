@@ -4,8 +4,16 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 
+let mongoose = null;
+try {
+    mongoose = require('mongoose');
+} catch (e) {
+    // optional fallback
+}
+
 const app = express();
 const PORT = process.env.ORDER_SERVICE_PORT || process.env.PORT || 3003;
+const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI || null;
 
 // Configurable Service URLs for inter-service communication (Docker container names or 127.0.0.1)
 const USER_SERVICE_URL = (process.env.USER_SERVICE_URL || 'http://127.0.0.1:3001').replace(/\/$/, '');
@@ -13,6 +21,7 @@ const PRODUCT_SERVICE_URL = (process.env.PRODUCT_SERVICE_URL || 'http://127.0.0.
 const REQUEST_TIMEOUT_MS = parseInt(process.env.REQUEST_TIMEOUT_MS || '3500', 10);
 
 const DATA_FILE = path.join(__dirname, 'data', 'orders.json');
+let isMongoConnected = false;
 
 // Middleware
 app.use(cors());
@@ -24,6 +33,21 @@ app.use((req, res, next) => {
     next();
 });
 
+// Seed data
+const initialOrders = [
+    {
+        id: 1,
+        userId: 101,
+        user: { id: 101, name: "Aarav Patel", email: "aarav@campus.edu", department: "Computer Science" },
+        productId: 501,
+        product: { id: 501, name: "Engineering Physics Textbook", price: 650, category: "Books" },
+        quantity: 1,
+        totalAmount: 650,
+        status: "CONFIRMED",
+        createdAt: new Date().toISOString()
+    }
+];
+
 // Database Persistence Helpers (Data Ownership: Order Service owns its data)
 const ensureDataStorage = () => {
     const dir = path.dirname(DATA_FILE);
@@ -31,25 +55,12 @@ const ensureDataStorage = () => {
         fs.mkdirSync(dir, { recursive: true });
     }
     if (!fs.existsSync(DATA_FILE)) {
-        const initialOrders = [
-            {
-                id: 1,
-                userId: 101,
-                user: { id: 101, name: "Aarav Patel", email: "aarav@campus.edu", department: "Computer Science" },
-                productId: 501,
-                product: { id: 501, name: "Engineering Physics Textbook", price: 650, category: "Books" },
-                quantity: 1,
-                totalAmount: 650,
-                status: "CONFIRMED",
-                createdAt: new Date().toISOString()
-            }
-        ];
         fs.writeFileSync(DATA_FILE, JSON.stringify(initialOrders, null, 2), 'utf-8');
         console.log('[Order-Service] Initial order database initialized with seed data.');
     }
 };
 
-const readOrders = () => {
+const readFileOrders = () => {
     ensureDataStorage();
     try {
         const data = fs.readFileSync(DATA_FILE, 'utf-8');
@@ -60,9 +71,78 @@ const readOrders = () => {
     }
 };
 
-const writeOrders = (orders) => {
+const writeFileOrders = (orders) => {
     ensureDataStorage();
     fs.writeFileSync(DATA_FILE, JSON.stringify(orders, null, 2), 'utf-8');
+};
+
+// Mongoose Schema & Model
+let OrderModel = null;
+if (mongoose) {
+    const orderSchema = new mongoose.Schema({
+        id: { type: Number, required: true, unique: true },
+        userId: { type: Number, required: true },
+        user: { type: Object, default: {} },
+        productId: { type: Number, required: true },
+        product: { type: Object, default: {} },
+        quantity: { type: Number, default: 1, min: 1 },
+        totalAmount: { type: Number, required: true },
+        status: { type: String, default: "CONFIRMED" },
+        createdAt: { type: String, default: () => new Date().toISOString() }
+    }, { versionKey: false });
+
+    OrderModel = mongoose.models.Order || mongoose.model('Order', orderSchema);
+}
+
+// Database Connection & Initial Seeding
+const initMongoDB = async () => {
+    if (!MONGODB_URI || !mongoose) {
+        console.log('[Order-Service] No MONGODB_URI provided. Running in persistent local JSON storage mode.');
+        return;
+    }
+
+    try {
+        console.log(`[Order-Service] Connecting to MongoDB Atlas...`);
+        await mongoose.connect(MONGODB_URI, {
+            serverSelectionTimeoutMS: 5000,
+            connectTimeoutMS: 5000
+        });
+        isMongoConnected = true;
+        console.log(`[Order-Service] Connected to MongoDB Atlas! Host: ${mongoose.connection.host}, DB: ${mongoose.connection.name}`);
+
+        const count = await OrderModel.countDocuments();
+        if (count === 0) {
+            console.log('[Order-Service] Seeding initial orders into MongoDB Atlas...');
+            await OrderModel.insertMany(initialOrders);
+            console.log(`[Order-Service] Seeded ${initialOrders.length} initial orders into MongoDB Atlas.`);
+        }
+    } catch (err) {
+        isMongoConnected = false;
+        console.warn(`[Order-Service Notice] MongoDB connection failed (${err.message}). Falling back to local storage.`);
+    }
+};
+
+const getAllOrders = async () => {
+    if (isMongoConnected && OrderModel) {
+        try {
+            return await OrderModel.find({}, { _id: 0 }).lean();
+        } catch (e) {
+            console.error('[Order-Service] MongoDB read failed, using local file:', e.message);
+        }
+    }
+    return readFileOrders();
+};
+
+const getOrderById = async (orderId) => {
+    if (isMongoConnected && OrderModel) {
+        try {
+            return await OrderModel.findOne({ id: orderId }, { _id: 0 }).lean();
+        } catch (e) {
+            console.error('[Order-Service] MongoDB read failed, using local file:', e.message);
+        }
+    }
+    const orders = readFileOrders();
+    return orders.find(o => o.id === orderId);
 };
 
 /**
@@ -81,22 +161,22 @@ async function fetchFromDependency(url, serviceName) {
         });
         clearTimeout(timeoutId);
 
-        let body = null;
+        let data = null;
         try {
-            body = await response.json();
-        } catch (e) {
-            body = null;
+            data = await response.json();
+        } catch (jsonErr) {
+            data = null;
         }
 
         return {
             ok: response.ok,
             status: response.status,
-            data: body
+            data
         };
     } catch (err) {
         clearTimeout(timeoutId);
-        const isTimeout = err.name === 'AbortError' || err.code === 'ETIMEDOUT';
-        console.error(`[Order-Service Error] Failed communicating with ${serviceName} at ${url}:`, err.message);
+        const isTimeout = err.name === 'AbortError' || err.name === 'TimeoutError';
+        console.error(`[Order-Service Error] Failed to reach ${serviceName} (${url}): ${err.message}`);
         return {
             unreachable: true,
             isTimeout,
@@ -111,6 +191,10 @@ app.get(['/', '/health'], (req, res) => {
         service: "Order Service",
         status: "UP",
         port: PORT,
+        database: isMongoConnected ? "MongoDB Atlas (Connected)" : "Local JSON Storage (Active)",
+        mongoConnected: isMongoConnected,
+        mongoHost: isMongoConnected && mongoose.connection ? mongoose.connection.host : null,
+        mongoDatabase: isMongoConnected && mongoose.connection ? mongoose.connection.name : null,
         dependencies: {
             userServiceUrl: USER_SERVICE_URL,
             productServiceUrl: PRODUCT_SERVICE_URL
@@ -125,8 +209,8 @@ app.get(['/', '/health'], (req, res) => {
 });
 
 // GET /orders - Retrieve all orders
-app.get('/orders', (req, res) => {
-    const orders = readOrders();
+app.get('/orders', async (req, res) => {
+    const orders = await getAllOrders();
     res.status(200).json({
         success: true,
         count: orders.length,
@@ -135,10 +219,9 @@ app.get('/orders', (req, res) => {
 });
 
 // GET /orders/:id - Retrieve order by ID
-app.get('/orders/:id', (req, res) => {
+app.get('/orders/:id', async (req, res) => {
     const orderId = parseInt(req.params.id, 10);
-    const orders = readOrders();
-    const order = orders.find(o => o.id === orderId);
+    const order = await getOrderById(orderId);
 
     if (!order) {
         return res.status(404).json({
@@ -155,36 +238,31 @@ app.get('/orders/:id', (req, res) => {
     });
 });
 
-/**
- * POST /orders - Create order with inter-service validation
- * Body: { "userId": 101, "productId": 501, "quantity": 2 }
- */
+// POST /orders - Inter-service communication & Order Creation
 app.post('/orders', async (req, res) => {
     const { userId, productId, quantity } = req.body;
 
-    // 1. Basic payload validation
-    if (userId === undefined || productId === undefined) {
+    if (!userId || !productId) {
         return res.status(400).json({
             success: false,
             status: 400,
             error: "Bad Request",
-            message: "Missing required fields: 'userId' and 'productId' must be provided."
+            message: "Both 'userId' and 'productId' are required to place an order."
         });
     }
 
-    const orderQty = quantity !== undefined ? parseInt(quantity, 10) : 1;
-    if (isNaN(orderQty) || orderQty <= 0) {
+    const orderQty = parseInt(quantity || 1, 10);
+    if (orderQty <= 0) {
         return res.status(400).json({
             success: false,
             status: 400,
             error: "Bad Request",
-            message: "Field 'quantity' must be a positive integer greater than 0."
+            message: "Field 'quantity' must be greater than 0."
         });
     }
 
-    // 2. Validate User with User Service (Service-to-Service call)
-    const userTargetUrl = `${USER_SERVICE_URL}/users/${userId}`;
-    const userResult = await fetchFromDependency(userTargetUrl, 'User Service');
+    // Step 1: Call User Service to validate user
+    const userResult = await fetchFromDependency(`${USER_SERVICE_URL}/users/${userId}`, 'User Service');
 
     if (userResult.unreachable) {
         return res.status(503).json({
@@ -192,27 +270,24 @@ app.post('/orders', async (req, res) => {
             status: 503,
             error: "Service Unavailable",
             message: "User Service is currently unavailable. Order cannot be validated.",
-            dependency: "User Service",
-            targetUrl: userTargetUrl,
-            details: userResult.isTimeout ? "Connection timed out" : userResult.error
+            targetService: "User Service",
+            isTimeout: userResult.isTimeout
         });
     }
 
-    if (userResult.status === 404 || !userResult.ok) {
-        return res.status(404).json({
+    if (!userResult.ok || !userResult.data?.data) {
+        return res.status(userResult.status === 404 ? 404 : 400).json({
             success: false,
-            status: 404,
-            error: "Not Found",
-            message: `User with ID ${userId} does not exist in User Service`,
-            dependency: "User Service"
+            status: userResult.status,
+            error: "Validation Failed",
+            message: `User with ID ${userId} does not exist in User Service.`
         });
     }
 
-    const userObj = userResult.data && userResult.data.data ? userResult.data.data : userResult.data;
+    const validatedUser = userResult.data.data;
 
-    // 3. Validate Product with Product Service (Service-to-Service call)
-    const productTargetUrl = `${PRODUCT_SERVICE_URL}/products/${productId}`;
-    const productResult = await fetchFromDependency(productTargetUrl, 'Product Service');
+    // Step 2: Call Product Service to validate product
+    const productResult = await fetchFromDependency(`${PRODUCT_SERVICE_URL}/products/${productId}`, 'Product Service');
 
     if (productResult.unreachable) {
         return res.status(503).json({
@@ -220,74 +295,70 @@ app.post('/orders', async (req, res) => {
             status: 503,
             error: "Service Unavailable",
             message: "Product Service is currently unavailable. Order cannot be validated.",
-            dependency: "Product Service",
-            targetUrl: productTargetUrl,
-            details: productResult.isTimeout ? "Connection timed out" : productResult.error
+            targetService: "Product Service",
+            isTimeout: productResult.isTimeout
         });
     }
 
-    if (productResult.status === 404 || !productResult.ok) {
-        return res.status(404).json({
+    if (!productResult.ok || !productResult.data?.data) {
+        return res.status(productResult.status === 404 ? 404 : 400).json({
             success: false,
-            status: 404,
-            error: "Not Found",
-            message: `Product with ID ${productId} does not exist in Product Service`,
-            dependency: "Product Service"
+            status: productResult.status,
+            error: "Validation Failed",
+            message: `Product with ID ${productId} does not exist in Product Service.`
         });
     }
 
-    const productObj = productResult.data && productResult.data.data ? productResult.data.data : productResult.data;
+    const validatedProduct = productResult.data.data;
 
-    // 4. Validate stock
-    if (productObj.stock !== undefined && productObj.stock < orderQty) {
-        return res.status(400).json({
-            success: false,
-            status: 400,
-            error: "Bad Request",
-            message: `Insufficient stock for '${productObj.name}'. Available: ${productObj.stock}, requested: ${orderQty}`
-        });
-    }
-
-    // 5. Construct and Save new Order
-    const orders = readOrders();
-    const newOrderId = orders.length > 0 ? Math.max(...orders.map(o => o.id)) + 1 : 1;
-    const totalAmount = parseFloat((productObj.price * orderQty).toFixed(2));
+    // Step 3: Compose Order with validated data
+    const orders = await getAllOrders();
+    const newOrderId = req.body.id ? parseInt(req.body.id, 10) : (orders.length > 0 ? Math.max(...orders.map(o => o.id)) + 1 : 1001);
 
     const newOrder = {
         id: newOrderId,
-        userId: parseInt(userId, 10),
+        userId: validatedUser.id,
         user: {
-            id: userObj.id,
-            name: userObj.name,
-            email: userObj.email,
-            department: userObj.department || "General"
+            id: validatedUser.id,
+            name: validatedUser.name,
+            email: validatedUser.email,
+            department: validatedUser.department
         },
-        productId: parseInt(productId, 10),
+        productId: validatedProduct.id,
         product: {
-            id: productObj.id,
-            name: productObj.name,
-            price: productObj.price,
-            category: productObj.category || "General"
+            id: validatedProduct.id,
+            name: validatedProduct.name,
+            price: validatedProduct.price,
+            category: validatedProduct.category
         },
         quantity: orderQty,
-        totalAmount: totalAmount,
+        totalAmount: validatedProduct.price * orderQty,
         status: "CONFIRMED",
         createdAt: new Date().toISOString()
     };
 
-    orders.push(newOrder);
-    writeOrders(orders);
+    if (isMongoConnected && OrderModel) {
+        try {
+            await OrderModel.create(newOrder);
+        } catch (e) {
+            console.error('[Order-Service] Failed to save to MongoDB:', e.message);
+        }
+    }
 
-    console.log(`[Order-Service] Order #${newOrderId} confirmed for User ${userObj.name} (${userObj.id}) and Product ${productObj.name} (${productObj.id})`);
+    const fileOrders = readFileOrders();
+    fileOrders.push(newOrder);
+    writeFileOrders(fileOrders);
+
+    console.log(`[Order-Service] Order #${newOrderId} created successfully! Total: ₹${newOrder.totalAmount}`);
 
     res.status(201).json({
         success: true,
-        message: "Order successfully placed and verified across microservices",
+        message: "Order successfully placed and validated through microservices.",
         data: newOrder
     });
 });
 
-// 404 handler
+// 404 Handler
 app.use((req, res) => {
     res.status(404).json({
         status: 404,
@@ -298,9 +369,11 @@ app.use((req, res) => {
 
 // Start Server
 ensureDataStorage();
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
     console.log(`[Order-Service] Running independently on port ${PORT}`);
     console.log(`[Order-Service] User Service URL: ${USER_SERVICE_URL}`);
     console.log(`[Order-Service] Product Service URL: ${PRODUCT_SERVICE_URL}`);
-    console.log(`[Order-Service] Endpoints available at http://localhost:${PORT}/orders`);
+    await initMongoDB();
 });
+
+module.exports = app;

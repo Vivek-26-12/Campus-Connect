@@ -168,8 +168,18 @@ async function runLab7Tests() {
         404
     );
 
-    // --- SECTION 5: Network Isolation Verification ---
-    console.log('\n--- 5. MICROSERVICE ISOLATION (DOCKER NETWORK ONLY) ---');
+    // --- SECTION 5: Routing /data to Data Service (5th Microservice) ---
+    console.log('\n--- 5. GATEWAY ROUTING: DATA SERVICE (5th MICROSERVICE) (/data) ---');
+    await assertEndpoint(
+        'GET /data/health (5th Microservice Health & DB Status)',
+        `${GATEWAY_URL}/data/health`,
+        { method: 'GET' },
+        200,
+        d => d.service === 'Data & Persistence Service' && d.status === 'UP'
+    );
+
+    // --- SECTION 6: Network Isolation Verification ---
+    console.log('\n--- 6. MICROSERVICE ISOLATION (DOCKER NETWORK ONLY) ---');
     process.stdout.write('Testing: Direct User Service Port (:3001) blocked        ');
     try {
         await fetch('http://127.0.0.1:3001/users', { signal: AbortSignal.timeout(1000) });
@@ -200,8 +210,18 @@ async function runLab7Tests() {
         passed++;
     }
 
-    // --- SECTION 6: Gateway Centralized Error Handling ---
-    console.log('\n--- 6. CENTRALIZED ERROR HANDLING ---');
+    process.stdout.write('Testing: Direct Data Service Port (:3004) blocked        ');
+    try {
+        await fetch('http://127.0.0.1:3004/health', { signal: AbortSignal.timeout(1000) });
+        console.log('\x1b[31m[FAIL]\x1b[0m (Port 3004 is unexpectedly accessible from host)');
+        failed++;
+    } catch (e) {
+        console.log('\x1b[32m[PASS]\x1b[0m (Connection Refused - Port is private)');
+        passed++;
+    }
+
+    // --- SECTION 7: Gateway Centralized Error Handling ---
+    console.log('\n--- 7. CENTRALIZED ERROR HANDLING ---');
     await assertEndpoint(
         'GET /non-existent-endpoint (404 Fallback)',
         `${GATEWAY_URL}/non-existent-endpoint`,

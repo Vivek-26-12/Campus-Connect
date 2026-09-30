@@ -275,7 +275,86 @@
       ]
     },
     {
-      "name": "5. Centralized Error Handling & Isolation",
+      "name": "5. Data Service - 5th Microservice (/data)",
+      "item": [
+        {
+          "name": "GET /data/health (MongoDB Connection Health)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/data/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "health"]
+            },
+            "description": "Checks MongoDB Atlas connection, host, database name, and ping latency."
+          }
+        },
+        {
+          "name": "GET /data/status (MongoDB Collection Counts)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/data/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "status"]
+            },
+            "description": "Returns counts of users, products, and orders in MongoDB Atlas."
+          }
+        },
+        {
+          "name": "POST /data/seed (Seed Collections into Atlas)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/data/seed",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "seed"]
+            },
+            "description": "Seeds initial dataset into MongoDB Atlas collections."
+          }
+        },
+        {
+          "name": "PATCH /data/update (Universal Document Updater)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"collection\": \"products\",\n  \"filter\": { \"id\": 501 },\n  \"update\": { \"stock\": 30, \"price\": 700 }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/update",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "update"]
+            },
+            "description": "Updates any document across MongoDB Atlas collections."
+          }
+        },
+        {
+          "name": "GET /data/overview (System Metrics Aggregate)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/data/overview",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "overview"]
+            },
+            "description": "Returns platform-wide inventory valuation and order revenue."
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Centralized Error Handling & Isolation",
       "item": [
         {
           "name": "Unreachable Service 502 Bad Gateway Test",

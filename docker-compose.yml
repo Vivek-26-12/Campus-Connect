@@ -2,12 +2,12 @@ version: '3.8'
 
 # =============================================================================
 # CampusConnect Microservices Orchestration (Lab 7)
-# API Gateway, Service Discovery & Cloud Deployment
+# API Gateway, Service Discovery, Cloud Deployment & Data Persistence Service
 #
-# Key Architectural Principle for Lab 7:
+# Key Architectural Principle:
 # ONLY api-gateway exposes port 3000 to the external host.
-# user-service, product-service, and order-service are private and reachable
-# ONLY inside the internal Docker bridge network ('campus-network').
+# user-service, product-service, order-service, and data-service are private
+# and reachable ONLY inside the internal Docker bridge network ('campus-network').
 # =============================================================================
 
 services:
@@ -24,6 +24,7 @@ services:
       - "3001"
     environment:
       USER_SERVICE_PORT: 3001
+      PORT: 3001
       MONGODB_URI: ${MONGODB_URI:-}
       NODE_ENV: production
     volumes:
@@ -45,6 +46,7 @@ services:
       - "3002"
     environment:
       PRODUCT_SERVICE_PORT: 3002
+      PORT: 3002
       MONGODB_URI: ${MONGODB_URI:-}
       NODE_ENV: production
     volumes:
@@ -66,6 +68,7 @@ services:
       - "3003"
     environment:
       ORDER_SERVICE_PORT: 3003
+      PORT: 3003
       USER_SERVICE_URL: http://user-service:3001
       PRODUCT_SERVICE_URL: http://product-service:3002
       REQUEST_TIMEOUT_MS: 3500
@@ -76,6 +79,26 @@ services:
       - product-service
     volumes:
       - order-data:/app/data
+    networks:
+      - campus-network
+    restart: unless-stopped
+
+  # -------------------------------------------------------------
+  # Data Service: 5th Microservice (MongoDB Atlas Manager) (:3004)
+  # -------------------------------------------------------------
+  data-service:
+    build:
+      context: ./data-service
+      dockerfile: Dockerfile
+    image: data-service:v1
+    container_name: data-service
+    expose:
+      - "3004"
+    environment:
+      DATA_SERVICE_PORT: 3004
+      PORT: 3004
+      MONGODB_URI: ${MONGODB_URI:-}
+      NODE_ENV: production
     networks:
       - campus-network
     restart: unless-stopped
@@ -97,12 +120,14 @@ services:
       USER_SERVICE_URL: http://user-service:3001
       PRODUCT_SERVICE_URL: http://product-service:3002
       ORDER_SERVICE_URL: http://order-service:3003
+      DATA_SERVICE_URL: http://data-service:3004
       REQUEST_TIMEOUT_MS: 5000
       NODE_ENV: production
     depends_on:
       - user-service
       - product-service
       - order-service
+      - data-service
     networks:
       - campus-network
     restart: unless-stopped

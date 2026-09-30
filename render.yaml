@@ -34,6 +34,11 @@ services:
           type: web
           name: campusconnect-order-service
           property: host
+      - key: DATA_SERVICE_URL
+        fromService:
+          type: web
+          name: campusconnect-data-service
+          property: host
 
   # ===========================================================================
   # User Microservice (Internal Cloud Service)
@@ -104,5 +109,25 @@ services:
           type: web
           name: campusconnect-product-service
           property: host
+      - key: MONGODB_URI
+        sync: false
+
+  # ===========================================================================
+  # Data Microservice (5th Service - MongoDB Atlas Manager)
+  # ===========================================================================
+  - type: web
+    name: campusconnect-data-service
+    env: docker
+    dockerfilePath: ./data-service/Dockerfile
+    dockerContext: ./data-service
+    plan: free
+    region: oregon
+    envVars:
+      - key: DATA_SERVICE_PORT
+        value: 3004
+      - key: PORT
+        value: 3004
+      - key: NODE_ENV
+        value: production
       - key: MONGODB_URI
         sync: false
