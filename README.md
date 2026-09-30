@@ -245,29 +245,32 @@ To prove that service discovery is strictly configuration-driven:
 
 ## 6. Cloud Deployment Guide (Part C)
 
-### 6.1 Deployment Architecture on Render / Cloud Container Platform
-The system is prepared for container deployment using the included [`render.yaml`](./render.yaml) specification:
+### 6.1 Live Production Deployment on Railway (`pleasing-communication`)
+All 4 containerized microservices are live and deployed in production on **Railway**:
 
-1. **API Gateway Service:**
-   - **Environment:** Docker (`./api-gateway/Dockerfile`)
-   - **Public URL:** e.g., `https://campusconnect-gateway.onrender.com`
-   - **Env Vars:** `PORT=3000`, `USER_SERVICE_URL`, `PRODUCT_SERVICE_URL`, `ORDER_SERVICE_URL`
-2. **Private Microservices:**
-   - Deployed as internal services or web services with internal routing hostnames (`campusconnect-user-service`, etc.).
-3. **MongoDB Atlas Database Cluster:**
-   - Pre-configured cluster on MongoDB Atlas (`cluster0.mongodb.net`).
-   - Connected via `MONGODB_URI` environment variable injected in cloud dashboard.
+| Service | Live Cloud Public URL | Status |
+|---|---|---|
+| **API Gateway** | `https://campusconnect-api-gateway-production.up.railway.app` | **Online (Port 3000 / Ingress)** |
+| **User Service** | `https://campusconnect-user-service-production.up.railway.app` | **Online (Port 3001)** |
+| **Product Service** | `https://campusconnect-product-service-production.up.railway.app` | **Online (Port 3002)** |
+| **Order Service** | `https://campusconnect-order-service-production.up.railway.app` | **Online (Port 3003)** |
 
-### 6.2 Testing Against Cloud Gateway URL in Postman
-1. Open Postman and import `CampusConnect_Lab7_API_Gateway.postman_collection.json`.
+### 6.2 Service Discovery & Environment Configuration on Railway
+The Gateway discovers backend services dynamically via environment variables configured in Railway's **Variables** tab:
+* `USER_SERVICE_URL` = `https://campusconnect-user-service-production.up.railway.app`
+* `PRODUCT_SERVICE_URL` = `https://campusconnect-product-service-production.up.railway.app`
+* `ORDER_SERVICE_URL` = `https://campusconnect-order-service-production.up.railway.app`
+
+### 6.3 Testing Against Cloud Gateway URL in Postman
+1. Open Postman and import [`CampusConnect_Lab7_API_Gateway.postman_collection.json`](./CampusConnect_Lab7_API_Gateway.postman_collection.json).
 2. Click the collection, open the **Variables** tab.
 3. Update the `baseUrl` variable:
-   - **Initial / Current Value:** `https://campusconnect-gateway.onrender.com` (or your cloud URL)
+   - **Current Value:** `https://campusconnect-api-gateway-production.up.railway.app`
 4. Execute the requests:
    - `GET {{baseUrl}}/health` → Status `200 OK`
    - `GET {{baseUrl}}/users` → Status `200 OK`
    - `POST {{baseUrl}}/orders` → Status `201 Created`
-   - Flow confirmed: **Postman → Cloud API Gateway → Cloud Microservices → MongoDB Atlas!**
+   - Full flow confirmed over public internet: **Postman → Cloud API Gateway → Microservices → MongoDB Atlas!**
 
 ---
 

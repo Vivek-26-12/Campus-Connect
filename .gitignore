@@ -19,6 +19,9 @@ node_modules/
 ScreenShots/
 screenshots/
 Screenshots/
+sss.md
+*.md.bak
+
 
 # Operating System Files
 .DS_Store
