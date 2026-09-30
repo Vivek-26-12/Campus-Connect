@@ -1,0 +1,16 @@
+{
+  "name": "campus-connect",
+  "version": "1.0.0",
+  "description": "CampusConnect Microservices Application - Lab 8 Kubernetes, CI/CD & Monitoring",
+  "scripts": {
+    "test:gateway": "npm test --prefix api-gateway",
+    "test:user": "npm test --prefix user-service",
+    "test:product": "npm test --prefix product-service",
+    "test:order": "npm test --prefix order-service",
+    "test": "npm run test:gateway && npm run test:user && npm run test:product && npm run test:order",
+    "docker:build": "docker build -t api-gateway:v1 ./api-gateway && docker build -t user-service:v1 ./user-service && docker build -t product-service:v1 ./product-service && docker build -t order-service:v1 ./order-service"
+  },
+  "keywords": ["kubernetes", "microservices", "prometheus", "grafana", "github-actions"],
+  "author": "CampusConnect Team",
+  "license": "ISC"
+}

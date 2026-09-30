@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    name: Build, Test & Containerize Microservices
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Install Microservices Dependencies
+        run: |
+          echo "=== Installing Dependencies for All Microservices ==="
+          cd api-gateway && npm ci && cd ..
+          cd user-service && npm ci && cd ..
+          cd product-service && npm ci && cd ..
+          cd order-service && npm ci && cd ..
+
+      - name: Run Microservices Tests
+        run: |
+          echo "=== Running CI Smoke and Unit Tests ==="
+          npm test --prefix api-gateway
+          npm test --prefix user-service
+          npm test --prefix product-service
+          npm test --prefix order-service
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image - API Gateway
+        run: |
+          docker build -t api-gateway:${{ github.sha }} -t api-gateway:v1 -t api-gateway:latest ./api-gateway
+
+      - name: Build Docker Image - User Service
+        run: |
+          docker build -t user-service:${{ github.sha }} -t user-service:v1 -t user-service:latest ./user-service
+
+      - name: Build Docker Image - Product Service
+        run: |
+          docker build -t product-service:${{ github.sha }} -t product-service:v1 -t product-service:latest ./product-service
+
+      - name: Build Docker Image - Order Service
+        run: |
+          docker build -t order-service:${{ github.sha }} -t order-service:v1 -t order-service:latest ./order-service

@@ -6,10 +6,31 @@
 
 const express = require('express');
 const cors = require('cors');
+const promClient = require('prom-client');
 const config = require('./config');
 
 const app = express();
 const PORT = config.port;
+
+// Initialize Prometheus registry and default node metrics
+const register = new promClient.Registry();
+promClient.collectDefaultMetrics({ register, prefix: 'gateway_' });
+
+// Custom Prometheus Metrics for Lab 8
+const httpRequestCounter = new promClient.Counter({
+    name: 'http_requests_total',
+    help: 'Total number of HTTP requests handled by the API Gateway',
+    labelNames: ['method', 'route', 'status'],
+    registers: [register]
+});
+
+const httpRequestDuration = new promClient.Histogram({
+    name: 'http_request_duration_seconds',
+    help: 'Duration of HTTP requests through API Gateway in seconds',
+    labelNames: ['method', 'route', 'status'],
+    buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+    registers: [register]
+});
 
 // Middlewares
 app.use(cors());
@@ -56,6 +77,10 @@ const proxyRequest = async (service, req, res) => {
         // Gateway Request & Response Logging: [Method, Path, Target Service, Status, Duration]
         console.log(`[API-Gateway] ${new Date().toISOString()} | ${req.method} ${req.originalUrl} -> ${service.name} (${targetUrl}) [Status: ${backendResponse.status}] (${duration}ms)`);
 
+        // Record Prometheus Metrics
+        httpRequestCounter.inc({ method: req.method, route: service.pathPrefix, status: backendResponse.status.toString() });
+        httpRequestDuration.observe({ method: req.method, route: service.pathPrefix, status: backendResponse.status.toString() }, duration / 1000);
+
         res.status(backendResponse.status);
         res.set('Content-Type', backendResponse.headers.get('content-type') || 'application/json');
         return res.send(responseData);
@@ -71,6 +96,10 @@ const proxyRequest = async (service, req, res) => {
             : `Gateway failed to reach downstream microservice '${service.name}' at ${service.url}.`;
 
         console.error(`[API-Gateway ERROR] ${new Date().toISOString()} | ${req.method} ${req.originalUrl} -> ${service.name} [Status: ${statusCode}] (${duration}ms) | Cause: ${err.message}`);
+
+        // Record Prometheus Metrics for Error
+        httpRequestCounter.inc({ method: req.method, route: service.pathPrefix, status: statusCode.toString() });
+        httpRequestDuration.observe({ method: req.method, route: service.pathPrefix, status: statusCode.toString() }, duration / 1000);
 
         return res.status(statusCode).json({
             success: false,
@@ -89,8 +118,19 @@ const proxyRequest = async (service, req, res) => {
 // Core Gateway Endpoints
 // -------------------------------------------------------------
 
+// GET /metrics - Prometheus Metrics Scrape Endpoint (Lab 8 Requirement)
+app.get('/metrics', async (req, res) => {
+    try {
+        res.set('Content-Type', register.contentType);
+        res.end(await register.metrics());
+    } catch (err) {
+        res.status(500).end(err.message);
+    }
+});
+
 // GET /health - Gateway health-check endpoint (Part A Requirement)
 app.get('/health', (req, res) => {
+    httpRequestCounter.inc({ method: 'GET', route: '/health', status: '200' });
     res.status(200).json({
         service: "api-gateway",
         status: "UP",
@@ -111,6 +151,7 @@ app.get('/health', (req, res) => {
 
 // GET /services - Service Discovery Registry Inspection Endpoint (Part B Requirement)
 app.get('/services', (req, res) => {
+    httpRequestCounter.inc({ method: 'GET', route: '/services', status: '200' });
     res.status(200).json({
         serviceRegistry: "CampusConnect Service Registry",
         mode: "Environment / File Configured (Dynamic Registry Table)",
@@ -121,6 +162,7 @@ app.get('/services', (req, res) => {
 
 // GET / - Gateway Landing & Service Discovery Dashboard
 app.get('/', (req, res) => {
+    httpRequestCounter.inc({ method: 'GET', route: '/', status: '200' });
     res.status(200).json({
         service: "CampusConnect API Gateway",
         description: "Unified entry point for microservices (Lab 7 - Gateway, Service Discovery & Cloud Deployment)",
@@ -128,6 +170,7 @@ app.get('/', (req, res) => {
         gatewayPort: PORT,
         healthCheck: "/health",
         registryView: "/services",
+        metricsEndpoint: "/metrics",
         routingTable: {
             "/users/*": {
                 target: config.services.userService.url,
@@ -163,6 +206,7 @@ app.use('/data', (req, res) => proxyRequest(config.services.dataService, req, re
 
 // 404 Fallback for Unmapped Gateway Endpoints
 app.use((req, res) => {
+    httpRequestCounter.inc({ method: req.method, route: 'unmatched', status: '404' });
     res.status(404).json({
         success: false,
         status: 404,
@@ -171,6 +215,7 @@ app.use((req, res) => {
         availableEndpoints: [
             "GET /health",
             "GET /services",
+            "GET /metrics",
             "GET /users",
             "GET /products",
             "GET /orders"
