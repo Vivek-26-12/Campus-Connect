@@ -1,0 +1,264 @@
+{
+  "info": {
+    "_postman_id": "c8d9e0f1-a2b3-4567-cdef-ab1234567890",
+    "name": "Lab 8: Kubernetes Orchestration, CI/CD & Monitoring",
+    "description": "Postman Test Suite for CampusConnect on Kubernetes with Prometheus & Grafana Monitoring (Lab 8).\nTests Gateway entrypoint, health probes, service discovery, microservices routing, Prometheus metrics scraping, and error rate monitoring.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "gatewayUrl",
+      "value": "http://localhost:3000",
+      "type": "string",
+      "description": "API Gateway external access URL (LoadBalancer/Port-forward: http://localhost:3000)"
+    },
+    {
+      "key": "nodePortUrl",
+      "value": "http://localhost:30080",
+      "type": "string",
+      "description": "API Gateway NodePort direct access URL"
+    },
+    {
+      "key": "prometheusUrl",
+      "value": "http://localhost:9090",
+      "type": "string",
+      "description": "Prometheus Monitoring Server URL"
+    },
+    {
+      "key": "grafanaUrl",
+      "value": "http://localhost:3005",
+      "type": "string",
+      "description": "Grafana Dashboard Server URL (or NodePort 30030)"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Kubernetes Gateway Health & Observability",
+      "item": [
+        {
+          "name": "GET /health (Liveness & Readiness Probe)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/health",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Verifies Gateway status 'UP' used by Kubernetes liveness and readiness probes."
+          }
+        },
+        {
+          "name": "GET /metrics (Prometheus Metrics Scrape)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/metrics",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["metrics"]
+            },
+            "description": "Scrapes Prometheus text metrics including http_requests_total and http_request_duration_seconds."
+          }
+        },
+        {
+          "name": "GET /services (Internal K8s DNS Service Discovery)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/services",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["services"]
+            },
+            "description": "Returns discovered internal Kubernetes service endpoints (user-service:3001, product-service:3002, order-service:3003)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Microservices Operations via K8s Gateway",
+      "item": [
+        {
+          "name": "GET /users (User Service via Gateway)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/users",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["users"]
+            },
+            "description": "Fetches user directory through the load-balanced User Service deployment."
+          }
+        },
+        {
+          "name": "GET /products (Product Service via Gateway)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/products",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["products"]
+            },
+            "description": "Fetches catalog products through Product Service."
+          }
+        },
+        {
+          "name": "POST /orders (Place Order with Inter-Service Validation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 101,\n  \"productId\": 501,\n  \"quantity\": 2\n}"
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/orders",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["orders"]
+            },
+            "description": "Submits purchase order through gateway. Order Service validates student and stock with peer services."
+          }
+        },
+        {
+          "name": "GET /orders (List All Orders)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/orders",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["orders"]
+            },
+            "description": "Lists all processed order transactions."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Direct NodePort External Verification",
+      "item": [
+        {
+          "name": "GET /health via NodePort (:30080)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{nodePortUrl}}/health",
+              "host": ["{{nodePortUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Verifies direct external access to API Gateway via Kubernetes NodePort 30080."
+          }
+        },
+        {
+          "name": "GET /products via NodePort (:30080)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{nodePortUrl}}/products",
+              "host": ["{{nodePortUrl}}"],
+              "path": ["products"]
+            },
+            "description": "Fetches catalog items via NodePort routing."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Prometheus & Grafana Monitoring Validation",
+      "item": [
+        {
+          "name": "GET Prometheus Targets API",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{prometheusUrl}}/api/v1/targets",
+              "host": ["{{prometheusUrl}}"],
+              "path": ["api", "v1", "targets"]
+            },
+            "description": "Confirms Prometheus scraping targets including api-gateway reporting UP."
+          }
+        },
+        {
+          "name": "GET PromQL Query - Target UP State",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{prometheusUrl}}/api/v1/query?query=up{job=\"api-gateway\"}",
+              "host": ["{{prometheusUrl}}"],
+              "path": ["api", "v1", "query"],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "up{job=\"api-gateway\"}"
+                }
+              ]
+            },
+            "description": "Executes PromQL to verify gateway target is UP (value 1)."
+          }
+        },
+        {
+          "name": "GET PromQL Query - Request Throughput",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{prometheusUrl}}/api/v1/query?query=rate(http_requests_total[1m])",
+              "host": ["{{prometheusUrl}}"],
+              "path": ["api", "v1", "query"],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "rate(http_requests_total[1m])"
+                }
+              ]
+            },
+            "description": "Queries request rate per second per route."
+          }
+        },
+        {
+          "name": "GET Grafana Health API",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{grafanaUrl}}/api/health",
+              "host": ["{{grafanaUrl}}"],
+              "path": ["api", "health"]
+            },
+            "description": "Verifies Grafana server health status."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Error Traffic & Anomaly Simulation",
+      "item": [
+        {
+          "name": "GET /invalid-endpoint (Trigger Safe 404 for Metrics)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/v1/invalid-route-for-metrics",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "v1", "invalid-route-for-metrics"]
+            },
+            "description": "Intentionally generates a 404 Not Found to demonstrate error tracking in Grafana."
+          }
+        }
+      ]
+    }
+  ]
+}
