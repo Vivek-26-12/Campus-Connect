@@ -49,7 +49,12 @@ app.use((req, res, next) => {
  * @param {object} service - The registered service object from the service registry
  */
 const proxyRequest = async (service, req, res) => {
-    const targetUrl = `${service.url}${req.originalUrl}`;
+    let forwardPath = req.originalUrl;
+    // Normalize path for data-service so /data/health routes to /health on data-service
+    if (service.id === 'data-service') {
+        forwardPath = req.originalUrl.replace(/^\/data(\/|$)/, '/') || '/';
+    }
+    const targetUrl = `${service.url}${forwardPath}`;
     const startTime = Date.now();
 
     try {

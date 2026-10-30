@@ -104,7 +104,7 @@ const connectMongoDB = async () => {
 // -------------------------------------------------------------
 
 // 1. GET /health - Connection & Health Status
-app.get(['/', '/health'], async (req, res) => {
+app.get(['/', '/health', '/data', '/data/health'], async (req, res) => {
     let pingTimeMs = null;
     if (isMongoConnected && mongoose.connection?.db) {
         try {
